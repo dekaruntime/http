@@ -68,6 +68,15 @@ export function http_request($req) {
 }
 
 // Default transport — routes through the Rust bridge.
+
+/// docid: phpx/http/__http_request_default()
+/// <Function name="__http_request_default">
+///   <Description>PHPX standard module function `__http_request_default` from `http`.</Description>
+///   <Parameter name="$req" type="mixed" required="true" typeLink="/docs/php/types/mixed">
+///     Parameter $req.
+///   </Parameter>
+///   <ReturnType type="mixed" typeLink="/docs/php/types/mixed" />
+/// </Function>
 export function __http_request_default($req) {
     $raw = bridge('http', 'request', $req)
     return __http_decode_response($raw)
@@ -133,6 +142,17 @@ export function http_req_stream_new() {
     return bridge('http', 'req_stream_new', {})
 }
 
+/// docid: phpx/http/http_req_stream_write()
+/// <Function name="http_req_stream_write">
+///   <Description>PHPX standard module function `http_req_stream_write` from `http`.</Description>
+///   <Parameter name="$stream_handle" type="mixed" required="true" typeLink="/docs/php/types/mixed">
+///     Parameter $stream_handle.
+///   </Parameter>
+///   <Parameter name="$chunk" type="mixed" required="true" typeLink="/docs/php/types/mixed">
+///     Parameter $chunk.
+///   </Parameter>
+///   <ReturnType type="mixed" typeLink="/docs/php/types/mixed" />
+/// </Function>
 export function http_req_stream_write($stream_handle, $chunk) {
     return bridge('http', 'req_stream_write', {
         stream_handle: $stream_handle,
@@ -140,6 +160,14 @@ export function http_req_stream_write($stream_handle, $chunk) {
     })
 }
 
+/// docid: phpx/http/http_req_stream_end()
+/// <Function name="http_req_stream_end">
+///   <Description>PHPX standard module function `http_req_stream_end` from `http`.</Description>
+///   <Parameter name="$stream_handle" type="mixed" required="true" typeLink="/docs/php/types/mixed">
+///     Parameter $stream_handle.
+///   </Parameter>
+///   <ReturnType type="mixed" typeLink="/docs/php/types/mixed" />
+/// </Function>
 export function http_req_stream_end($stream_handle) {
     return bridge('http', 'req_stream_end', { stream_handle: $stream_handle })
 }
