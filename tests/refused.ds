@@ -1,0 +1,15 @@
+import { get } from "../index.ds"
+
+fn go() {
+  const refused = match (get("http://127.0.0.1:1/")) {
+    Ok(v) => false,
+    Err(e) => true
+  };
+  if (!refused) {
+    print("fail-refused");
+    return;
+  }
+  print("ok");
+}
+
+go()

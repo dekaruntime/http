@@ -1,0 +1,49 @@
+import { parse_url, format_request, utf8 } from "../url.ds"
+
+fn go() {
+  const parsed = match (parse_url("https://example.com:8443/path?q=1")) {
+    Ok(v) => v,
+    Err(e) => { host: "", path: "", port: 0, scheme: "" }
+  };
+  const host = match (unsafe { String(parsed.host) }) {
+    Ok(v) => v,
+    Err(e) => ""
+  };
+  const path = match (unsafe { String(parsed.path) }) {
+    Ok(v) => v,
+    Err(e) => ""
+  };
+  const port = match (unsafe { Number(parsed.port) }) {
+    Ok(v) => v,
+    Err(e) => 0
+  };
+  const scheme = match (unsafe { String(parsed.scheme) }) {
+    Ok(v) => v,
+    Err(e) => ""
+  };
+  if (scheme != "https" || host != "example.com" || port != 8443 || path != "/path?q=1") {
+    print("fail-url");
+    print(scheme);
+    print(host);
+    print(path);
+    return;
+  }
+
+  const req = format_request("GET", "/hello", "example.com", {}, utf8(""));
+  const has_get = match (unsafe { req.indexOf("GET /hello HTTP/1.1") == 0 }) {
+    Ok(v) => v,
+    Err(e) => false
+  };
+  const has_host = match (unsafe { req.indexOf("Host: example.com") >= 0 }) {
+    Ok(v) => v,
+    Err(e) => false
+  };
+  if (!has_get || !has_host) {
+    print("fail-format");
+    print(req);
+    return;
+  }
+  print("ok");
+}
+
+go()

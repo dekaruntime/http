@@ -1,0 +1,143 @@
+// HTTP/1.1 on @deka/tcp + @deka/tls. No http host kind.
+import { connect, read, write, close, set_deadline } from "tcp"
+import { upgrade } from "tls"
+import { parse_url, format_request, parse_response, utf8, concat_bytes, no_body } from "./url.ds"
+
+export { parse_url, format_request }
+
+fn close_quiet(handle: number) {
+  close(handle);
+}
+
+fn scheme_of(u: object): string {
+  let r = unsafe { String(u.scheme || "") };
+  return match (r) {
+    Ok(v) => v,
+    Err(e) => ""
+  };
+}
+
+fn host_of(u: object): string {
+  let r = unsafe { String(u.host || "") };
+  return match (r) {
+    Ok(v) => v,
+    Err(e) => ""
+  };
+}
+
+fn path_of(u: object): string {
+  let r = unsafe { String(u.path || "/") };
+  return match (r) {
+    Ok(v) => v,
+    Err(e) => "/"
+  };
+}
+
+fn port_of(u: object): number {
+  let r = unsafe { Number(u.port || 0) };
+  return match (r) {
+    Ok(v) => v,
+    Err(e) => 0
+  };
+}
+
+fn parsed_complete(parsed: object): boolean {
+  let r = unsafe { parsed.complete === true };
+  return match (r) {
+    Ok(v) => v,
+    Err(e) => false
+  };
+}
+
+fn parsed_error(parsed: object): string {
+  let r = unsafe { parsed.error ? String(parsed.error) : "" };
+  return match (r) {
+    Ok(v) => v,
+    Err(e) => ""
+  };
+}
+
+fn chunk_len(chunk: bytes): number {
+  let r = unsafe { chunk.byteLength };
+  return match (r) {
+    Ok(v) => v,
+    Err(e) => 0
+  };
+}
+
+fn finish_request(handle: number, method: string, u: object, headers: object, body: bytes) {
+  set_deadline(handle, 10000);
+  const head = format_request(method, path_of(u), host_of(u), headers, body);
+  if (head == "") {
+    close_quiet(handle);
+    return Err("failed to format request")
+  }
+  const payload = concat_bytes(utf8(head), body);
+  const wrote = match (write(handle, payload)) {
+    Ok(n) => n,
+    Err(e) => -1
+  };
+  if (wrote < 0) {
+    close_quiet(handle);
+    return Err("write failed")
+  }
+  let acc = no_body();
+  let step = 0;
+  for (step = 0; step < 256; step = step + 1) {
+    const chunk = match (read(handle, 4096)) {
+      Ok(buf) => buf,
+      Err(e) => no_body()
+    };
+    acc = concat_bytes(acc, chunk);
+    const parsed = match (parse_response(acc)) {
+      Ok(v) => v,
+      Err(e) => { complete: false, error: "parse failed" }
+    };
+    const perr = parsed_error(parsed);
+    if (perr != "") {
+      close_quiet(handle);
+      return Err(perr)
+    }
+    if (parsed_complete(parsed)) {
+      close_quiet(handle);
+      return Ok(parsed)
+    }
+    if (chunk_len(chunk) == 0) {
+      close_quiet(handle);
+      return match (parse_response(acc)) {
+        Ok(v) => Ok(v),
+        Err(e) => Err("empty response")
+      }
+    }
+  }
+  close_quiet(handle);
+  return Err("response too large")
+}
+
+fn after_connect(handle: number, method: string, u: object, headers: object, body: bytes) {
+  if (scheme_of(u) == "https") {
+    return match (upgrade(handle, host_of(u))) {
+      Err(e) => Err(e),
+      Ok(tls) => finish_request(tls, method, u, headers, body)
+    }
+  }
+  return finish_request(handle, method, u, headers, body)
+}
+
+export fn request(method: string, url: string, headers: object, body: bytes) {
+  return match (parse_url(url)) {
+    Err(e) => Err("invalid url"),
+    Ok(u) => match (connect(host_of(u), port_of(u))) {
+      Err(e) => Err(e),
+      Ok(h) => after_connect(h, method, u, headers, body)
+    }
+  }
+}
+
+export fn get(url: string) {
+  return request("GET", url, {}, no_body())
+}
+
+export fn post(url: string, content_type: string, body: bytes) {
+  return request("POST", url, { "Content-Type": content_type }, body)
+}
