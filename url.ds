@@ -63,7 +63,7 @@ export fn parse_url(url: string) {
   };
 }
 
-export fn format_request(method: string, path: string, host: string, headers: object, body: bytes): string {
+export fn format_request<T>(method: string, path: string, host: string, headers: T, body: bytes): string {
   let r = unsafe {
     var lines = String(method).toUpperCase() + " " + (path || "/") + " HTTP/1.1\r\n";
     var hdrs = headers || {};

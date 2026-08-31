@@ -9,7 +9,7 @@ fn close_quiet(handle: number) {
   close(handle);
 }
 
-fn scheme_of(u: object): string {
+fn scheme_of<T>(u: T): string {
   let r = unsafe { String(u.scheme || "") };
   return match (r) {
     Ok(v) => v,
@@ -17,7 +17,7 @@ fn scheme_of(u: object): string {
   };
 }
 
-fn host_of(u: object): string {
+fn host_of<T>(u: T): string {
   let r = unsafe { String(u.host || "") };
   return match (r) {
     Ok(v) => v,
@@ -25,7 +25,7 @@ fn host_of(u: object): string {
   };
 }
 
-fn path_of(u: object): string {
+fn path_of<T>(u: T): string {
   let r = unsafe { String(u.path || "/") };
   return match (r) {
     Ok(v) => v,
@@ -33,7 +33,7 @@ fn path_of(u: object): string {
   };
 }
 
-fn port_of(u: object): number {
+fn port_of<T>(u: T): number {
   let r = unsafe { Number(u.port || 0) };
   return match (r) {
     Ok(v) => v,
@@ -41,7 +41,7 @@ fn port_of(u: object): number {
   };
 }
 
-fn parsed_complete(parsed: object): boolean {
+fn parsed_complete<T>(parsed: T): boolean {
   let r = unsafe { parsed.complete === true };
   return match (r) {
     Ok(v) => v,
@@ -49,7 +49,7 @@ fn parsed_complete(parsed: object): boolean {
   };
 }
 
-fn parsed_error(parsed: object): string {
+fn parsed_error<T>(parsed: T): string {
   let r = unsafe { parsed.error ? String(parsed.error) : "" };
   return match (r) {
     Ok(v) => v,
@@ -65,7 +65,7 @@ fn chunk_len(chunk: bytes): number {
   };
 }
 
-fn finish_request(handle: number, method: string, u: object, headers: object, body: bytes) {
+fn finish_request<T, U>(handle: number, method: string, u: T, headers: U, body: bytes) {
   set_deadline(handle, 10000);
   const head = format_request(method, path_of(u), host_of(u), headers, body);
   if (head == "") {
@@ -114,7 +114,7 @@ fn finish_request(handle: number, method: string, u: object, headers: object, bo
   return Err("response too large")
 }
 
-fn after_connect(handle: number, method: string, u: object, headers: object, body: bytes) {
+fn after_connect<T, U>(handle: number, method: string, u: T, headers: U, body: bytes) {
   if (scheme_of(u) == "https") {
     return match (upgrade(handle, host_of(u))) {
       Err(e) => Err(e),
@@ -124,7 +124,7 @@ fn after_connect(handle: number, method: string, u: object, headers: object, bod
   return finish_request(handle, method, u, headers, body)
 }
 
-export fn request(method: string, url: string, headers: object, body: bytes) {
+export fn request<T>(method: string, url: string, headers: T, body: bytes) {
   return match (parse_url(url)) {
     Err(e) => Err("invalid url"),
     Ok(u) => match (connect(host_of(u), port_of(u))) {
