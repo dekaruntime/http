@@ -10,7 +10,7 @@ fn close_quiet(handle: number) {
 }
 
 fn scheme_of<T>(u: T): string {
-  let r = unsafe { String(u.scheme || "") };
+  let r = unsafe<string> { String(u.scheme || "") };
   return match (r) {
     Ok(v) => v,
     Err(e) => ""
@@ -18,7 +18,7 @@ fn scheme_of<T>(u: T): string {
 }
 
 fn host_of<T>(u: T): string {
-  let r = unsafe { String(u.host || "") };
+  let r = unsafe<string> { String(u.host || "") };
   return match (r) {
     Ok(v) => v,
     Err(e) => ""
@@ -26,7 +26,7 @@ fn host_of<T>(u: T): string {
 }
 
 fn path_of<T>(u: T): string {
-  let r = unsafe { String(u.path || "/") };
+  let r = unsafe<string> { String(u.path || "/") };
   return match (r) {
     Ok(v) => v,
     Err(e) => "/"
@@ -34,7 +34,7 @@ fn path_of<T>(u: T): string {
 }
 
 fn port_of<T>(u: T): number {
-  let r = unsafe { Number(u.port || 0) };
+  let r = unsafe<number> { Number(u.port || 0) };
   return match (r) {
     Ok(v) => v,
     Err(e) => 0
@@ -42,7 +42,7 @@ fn port_of<T>(u: T): number {
 }
 
 fn parsed_complete<T>(parsed: T): boolean {
-  let r = unsafe { parsed.complete === true };
+  let r = unsafe<boolean> { parsed.complete === true };
   return match (r) {
     Ok(v) => v,
     Err(e) => false
@@ -50,7 +50,7 @@ fn parsed_complete<T>(parsed: T): boolean {
 }
 
 fn parsed_error<T>(parsed: T): string {
-  let r = unsafe { parsed.error ? String(parsed.error) : "" };
+  let r = unsafe<string> { parsed.error ? String(parsed.error) : "" };
   return match (r) {
     Ok(v) => v,
     Err(e) => ""
@@ -58,7 +58,7 @@ fn parsed_error<T>(parsed: T): string {
 }
 
 fn chunk_len(chunk: bytes): number {
-  let r = unsafe { chunk.byteLength };
+  let r = unsafe<number> { chunk.byteLength };
   return match (r) {
     Ok(v) => v,
     Err(e) => 0

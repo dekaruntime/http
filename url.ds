@@ -1,5 +1,5 @@
 fn empty_bytes(): bytes {
-  let r = unsafe { new Uint8Array(0) };
+  let r = unsafe<bytes> { new Uint8Array(0) };
   return match (r) {
     Ok(v) => v,
     Err(e) => empty_bytes()
@@ -7,7 +7,7 @@ fn empty_bytes(): bytes {
 }
 
 export fn utf8(value: string): bytes {
-  let encoded = unsafe { new TextEncoder().encode(value) };
+  let encoded = unsafe<bytes> { new TextEncoder().encode(value) };
   return match (encoded) {
     Ok(buf) => buf,
     Err(err) => empty_bytes()

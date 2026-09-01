@@ -5,19 +5,19 @@ fn go() {
     Ok(v) => v,
     Err(e) => { host: "", path: "", port: 0, scheme: "" }
   };
-  const host = match (unsafe { String(parsed.host) }) {
+  const host = match (unsafe<string> { String(parsed.host) }) {
     Ok(v) => v,
     Err(e) => ""
   };
-  const path = match (unsafe { String(parsed.path) }) {
+  const path = match (unsafe<string> { String(parsed.path) }) {
     Ok(v) => v,
     Err(e) => ""
   };
-  const port = match (unsafe { Number(parsed.port) }) {
+  const port = match (unsafe<number> { Number(parsed.port) }) {
     Ok(v) => v,
     Err(e) => 0
   };
-  const scheme = match (unsafe { String(parsed.scheme) }) {
+  const scheme = match (unsafe<string> { String(parsed.scheme) }) {
     Ok(v) => v,
     Err(e) => ""
   };
@@ -30,11 +30,11 @@ fn go() {
   }
 
   const req = format_request("GET", "/hello", "example.com", {}, utf8(""));
-  const has_get = match (unsafe { req.indexOf("GET /hello HTTP/1.1") == 0 }) {
+  const has_get = match (unsafe<boolean> { req.indexOf("GET /hello HTTP/1.1") == 0 }) {
     Ok(v) => v,
     Err(e) => false
   };
-  const has_host = match (unsafe { req.indexOf("Host: example.com") >= 0 }) {
+  const has_host = match (unsafe<boolean> { req.indexOf("Host: example.com") >= 0 }) {
     Ok(v) => v,
     Err(e) => false
   };
