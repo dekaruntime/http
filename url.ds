@@ -1,4 +1,4 @@
-fn empty_bytes(): bytes {
+fn empty_bytes() bytes {
   let r = unsafe<bytes> { new Uint8Array(0) };
   return match (r) {
     Ok(v) => v,
@@ -6,7 +6,7 @@ fn empty_bytes(): bytes {
   };
 }
 
-export fn utf8(value: string): bytes {
+export fn utf8(value: string) bytes {
   let encoded = unsafe<bytes> { new TextEncoder().encode(value) };
   return match (encoded) {
     Ok(buf) => buf,
@@ -14,7 +14,7 @@ export fn utf8(value: string): bytes {
   };
 }
 
-export fn concat_bytes(a: bytes, b: bytes): bytes {
+export fn concat_bytes(a: bytes, b: bytes) bytes {
   let r = unsafe {
     var out = new Uint8Array(a.byteLength + b.byteLength);
     out.set(a, 0);
@@ -63,7 +63,7 @@ export fn parse_url(url: string) {
   };
 }
 
-export fn format_request<T>(method: string, path: string, host: string, headers: T, body: bytes): string {
+export fn format_request<T>(method: string, path: string, host: string, headers: T, body: bytes) string {
   let r = unsafe {
     var lines = String(method).toUpperCase() + " " + (path || "/") + " HTTP/1.1\r\n";
     var hdrs = headers || {};
@@ -136,6 +136,6 @@ export fn parse_response(buf: bytes) {
   };
 }
 
-export fn no_body(): bytes {
+export fn no_body() bytes {
   return empty_bytes();
 }
