@@ -1,6 +1,6 @@
 {
   "name": "@deka/http",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "main": "index.ds",
   "dependencies": {
     "@deka/tcp": "0.2.0",
