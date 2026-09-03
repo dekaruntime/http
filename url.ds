@@ -27,7 +27,7 @@ export fn concat_bytes(a: bytes, b: bytes) bytes {
   };
 }
 
-export fn parse_url(url: string) {
+export fn parse_url(url: string) Result<Url, string> {
   return unsafe {
     var raw = String(url);
     var scheme = "http";
@@ -63,7 +63,7 @@ export fn parse_url(url: string) {
   };
 }
 
-export fn format_request<T>(method: string, path: string, host: string, headers: T, body: bytes) string {
+export fn format_request(method: string, path: string, host: string, headers: Headers, body: bytes) string {
   let r = unsafe {
     var lines = String(method).toUpperCase() + " " + (path || "/") + " HTTP/1.1\r\n";
     var hdrs = headers || {};
@@ -74,6 +74,10 @@ export fn format_request<T>(method: string, path: string, host: string, headers:
     for (key in hdrs) {
       if (!Object.prototype.hasOwnProperty.call(hdrs, key)) continue;
       var lower = String(key).toLowerCase();
+      if (lower === "content_type") {
+        lines += "Content-Type: " + String(hdrs[key]) + "\r\n";
+        continue;
+      }
       if (lower === "host") hasHost = true;
       if (lower === "content-length") hasLength = true;
       if (lower === "connection") hasConn = true;
@@ -138,4 +142,19 @@ export fn parse_response(buf: bytes) {
 
 export fn no_body() bytes {
   return empty_bytes();
+}
+interface Url {
+  scheme: string;
+  host: string;
+  port: number;
+  path: string;
+}
+
+interface ParsedResponse {
+  complete: boolean;
+  error?: string;
+}
+
+interface Headers {
+  content_type: string;
 }
