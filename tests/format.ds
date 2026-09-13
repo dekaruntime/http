@@ -1,49 +1,132 @@
-import { parse_url, format_request, utf8 } from "../url.ds"
+summon { total log(value: string): void } from "./log.mjs"
+import { from_string, to_string, len } from "bytes"
+import { parse_url, format_request, parse_response, no_body } from "../url.ds"
+
+interface Url {
+  scheme: string
+  host: string
+  port: number
+  path: string
+}
+
+interface ParsedResponse {
+  complete: boolean
+  error: string?
+  status: number
+  body: bytes
+}
+
+fn fail(msg: string) {
+  log(msg)
+}
+
+fn contains(hay: string, needle: string) boolean {
+  return hay.includes(needle)
+}
 
 fn go() {
   const parsed = match (parse_url("https://example.com:8443/path?q=1")) {
     Ok(v) => v,
-    Err(e) => { host: "", path: "", port: 0, scheme: "" }
+    Throw(e) => { host: "", path: "", port: 0, scheme: "" }
   };
-  const host = match (unsafe<string> { String(parsed.host) }) {
-    Ok(v) => v,
-    Err(e) => ""
-  };
-  const path = match (unsafe<string> { String(parsed.path) }) {
-    Ok(v) => v,
-    Err(e) => ""
-  };
-  const port = match (unsafe<number> { Number(parsed.port) }) {
-    Ok(v) => v,
-    Err(e) => 0
-  };
-  const scheme = match (unsafe<string> { String(parsed.scheme) }) {
-    Ok(v) => v,
-    Err(e) => ""
-  };
-  if (scheme != "https" || host != "example.com" || port != 8443 || path != "/path?q=1") {
-    print("fail-url");
-    print(scheme);
-    print(host);
-    print(path);
+  if (parsed.scheme != "https" || parsed.host != "example.com" || parsed.port != 8443 || parsed.path != "/path?q=1") {
+    fail("fail-url");
+    log(parsed.scheme);
+    log(parsed.host);
+    log(parsed.path);
     return;
   }
 
-  const req = format_request("GET", "/hello", "example.com", { content_type: "" }, utf8(""));
-  const has_get = match (unsafe<boolean> { req.indexOf("GET /hello HTTP/1.1") == 0 }) {
+  const ipv6 = match (parse_url("http://[::1]:8080/x")) {
     Ok(v) => v,
-    Err(e) => false
+    Throw(e) => { host: "", path: "", port: 0, scheme: "" }
   };
-  const has_host = match (unsafe<boolean> { req.indexOf("Host: example.com") >= 0 }) {
-    Ok(v) => v,
-    Err(e) => false
-  };
-  if (!has_get || !has_host) {
-    print("fail-format");
-    print(req);
+  if (ipv6.scheme != "http" || ipv6.host != "::1" || ipv6.port != 8080 || ipv6.path != "/x") {
+    fail("fail-ipv6");
     return;
   }
-  print("ok");
+
+  const https_default = match (parse_url("https://example.com")) {
+    Ok(v) => v,
+    Throw(e) => { host: "", path: "", port: 0, scheme: "" }
+  };
+  if (https_default.port != 443 || https_default.path != "/") {
+    fail("fail-https-default");
+    return;
+  }
+
+  const empty = match (parse_url("")) { Ok(v) => false, Throw(e) => true };
+  const no_host = match (parse_url("https://")) { Ok(v) => false, Throw(e) => true };
+  const bad_port = match (parse_url("http://example.com:abc/")) { Ok(v) => false, Throw(e) => true };
+  if (!empty || !no_host || !bad_port) {
+    fail("fail-url-exception");
+    return;
+  }
+
+  const req = format_request("GET", "/hello", "example.com", { content_type: "" }, no_body());
+  if (!contains(req, "GET /hello HTTP/1.1") || !contains(req, "Host: example.com") || !contains(req, "Content-Length: 0") || !contains(req, "Connection: close")) {
+    fail("fail-format");
+    log(req);
+    return;
+  }
+
+  const posted = format_request("POST", "/x", "example.com", { content_type: "text/plain" }, from_string("hi"));
+  if (!contains(posted, "POST /x HTTP/1.1") || !contains(posted, "Content-Type: text/plain") || !contains(posted, "Content-Length: 2")) {
+    fail("fail-format-post");
+    log(posted);
+    return;
+  }
+
+  const incomplete = match (parse_response(from_string("HTTP/1.1 200 OK\r\n"))) {
+    Ok(v) => v,
+    Throw(e) => { complete: true, error: Some("throw"), status: -1, body: no_body() }
+  };
+  const incomplete_err = match (incomplete.error) { Some(v) => v, None => "" };
+  if (incomplete.complete || incomplete_err != "") {
+    fail("fail-incomplete");
+    return;
+  }
+
+  const chunked = match (parse_response(from_string("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n0\r\n\r\n"))) {
+    Ok(v) => v,
+    Throw(e) => { complete: true, error: Some("throw"), status: -1, body: no_body() }
+  };
+  const chunked_err = match (chunked.error) { Some(v) => v, None => "" };
+  if (chunked.complete || chunked_err != "chunked encoding not supported") {
+    fail("fail-chunked");
+    log(chunked_err);
+    return;
+  }
+
+  const short_body = match (parse_response(from_string("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhi"))) {
+    Ok(v) => v,
+    Throw(e) => { complete: true, error: Some("throw"), status: -1, body: no_body() }
+  };
+  if (short_body.complete) {
+    fail("fail-short-body");
+    return;
+  }
+
+  const ok_resp = match (parse_response(from_string("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello"))) {
+    Ok(v) => v,
+    Throw(e) => { complete: false, error: Some("throw"), status: -1, body: no_body() }
+  };
+  const ok_err = match (ok_resp.error) { Some(v) => v, None => "" };
+  if (!ok_resp.complete || ok_resp.status != 200 || ok_err != "" || to_string(ok_resp.body) != "hello" || len(ok_resp.body) != 5) {
+    fail("fail-complete");
+    return;
+  }
+
+  const bad_status = match (parse_response(from_string("HTTP/1.1\r\n\r\n"))) {
+    Ok(v) => false,
+    Throw(e) => true
+  };
+  if (!bad_status) {
+    fail("fail-bad-status");
+    return;
+  }
+
+  log("ok");
 }
 
 go()
