@@ -1,4 +1,4 @@
-summon { total log(value: string): void } from "./log.mjs"
+summon { total log(value: string) void } from "./log.mjs"
 import { get } from "../index.ds"
 
 fn go() {
