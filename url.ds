@@ -21,9 +21,9 @@ interface Headers {
 }
 
 summon {
-  parse_http_url(url: string): Exception<Url, JsError>,
-  total format_http_request(method: string, path: string, host: string, headers: Headers, body: bytes): string,
-  parse_http_response(buf: bytes): Exception<ParsedResponse, JsError>
+  parse_http_url(url: string) Exception<Url, JsError>,
+  total format_http_request(method: string, path: string, host: string, headers: Headers, body: bytes) string,
+  parse_http_response(buf: bytes) Exception<ParsedResponse, JsError>
 } from "./boundary.mjs"
 
 export fn parse_url(url: string) Exception<Url, JsError> {
