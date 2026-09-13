@@ -1,0 +1,110 @@
+export function parse_http_url(url) {
+  var raw = String(url);
+  var scheme = "http";
+  var rest = raw;
+  var se = raw.indexOf("://");
+  if (se >= 0) {
+    scheme = raw.slice(0, se);
+    rest = raw.slice(se + 3);
+  }
+  var path = "/";
+  var slash = rest.indexOf("/");
+  var hostport = rest;
+  if (slash >= 0) {
+    hostport = rest.slice(0, slash);
+    path = rest.slice(slash);
+  }
+  var host = hostport;
+  var port = scheme === "https" ? 443 : 80;
+  if (hostport.charAt(0) === "[") {
+    var end = hostport.indexOf("]");
+    if (end < 0) throw new Error("invalid url");
+    host = hostport.slice(1, end);
+    var after = hostport.slice(end + 1);
+    if (after.charAt(0) === ":") port = Number(after.slice(1));
+  } else {
+    var colon = hostport.lastIndexOf(":");
+    if (colon >= 0) {
+      host = hostport.slice(0, colon);
+      port = Number(hostport.slice(colon + 1));
+    }
+  }
+  if (!path) path = "/";
+  if (!host) throw new Error("invalid url");
+  if (!Number.isFinite(port)) throw new Error("invalid url");
+  return { scheme: scheme, host: host, port: port, path: path };
+}
+
+export function format_http_request(method, path, host, headers, body) {
+  var lines = String(method).toUpperCase() + " " + (path || "/") + " HTTP/1.1\r\n";
+  var hdrs = headers || {};
+  var hasHost = false;
+  var hasLength = false;
+  var hasConn = false;
+  var key;
+  for (key in hdrs) {
+    if (!Object.prototype.hasOwnProperty.call(hdrs, key)) continue;
+    var lower = String(key).toLowerCase();
+    if (lower === "content_type") {
+      lines += "Content-Type: " + String(hdrs[key]) + "\r\n";
+      continue;
+    }
+    if (lower === "host") hasHost = true;
+    if (lower === "content-length") hasLength = true;
+    if (lower === "connection") hasConn = true;
+    lines += key + ": " + String(hdrs[key]) + "\r\n";
+  }
+  if (!hasHost) lines += "Host: " + host + "\r\n";
+  if (!hasLength) lines += "Content-Length: " + String(body.byteLength) + "\r\n";
+  if (!hasConn) lines += "Connection: close\r\n";
+  lines += "\r\n";
+  return lines;
+}
+
+function empty_bytes() {
+  return new Uint8Array(0);
+}
+
+export function parse_http_response(buf) {
+  var i = 0;
+  var n = buf.byteLength;
+  var sep = -1;
+  for (i = 0; i + 3 < n; i++) {
+    if (buf[i] === 13 && buf[i + 1] === 10 && buf[i + 2] === 13 && buf[i + 3] === 10) {
+      sep = i;
+      break;
+    }
+  }
+  if (sep < 0) return { complete: false, status: 0, body: empty_bytes() };
+  var headerText = new TextDecoder("utf-8", { fatal: false }).decode(buf.subarray(0, sep));
+  var lines = headerText.split("\r\n");
+  var statusLine = lines[0] || "";
+  var parts = statusLine.split(" ");
+  if (parts.length < 2) throw new Error("invalid response");
+  var status = Number(parts[1]);
+  if (!Number.isFinite(status)) throw new Error("invalid response");
+  var headers = {};
+  var contentLength = -1;
+  var chunked = false;
+  var li = 1;
+  for (li = 1; li < lines.length; li++) {
+    var line = lines[li];
+    var c = line.indexOf(":");
+    if (c < 0) continue;
+    var name = line.slice(0, c).trim();
+    var value = line.slice(c + 1).trim();
+    headers[name.toLowerCase()] = value;
+    if (name.toLowerCase() === "content-length") contentLength = Number(value);
+    if (name.toLowerCase() === "transfer-encoding" && String(value).toLowerCase().indexOf("chunked") >= 0) chunked = true;
+  }
+  var bodyStart = sep + 4;
+  var have = n - bodyStart;
+  if (chunked) return { complete: false, error: "chunked encoding not supported", status: 0, body: empty_bytes() };
+  if (contentLength >= 0 && have < contentLength) return { complete: false, status: 0, body: empty_bytes() };
+  var bodyEnd = contentLength >= 0 ? bodyStart + contentLength : n;
+  return {
+    complete: true,
+    status: status,
+    body: buf.subarray(bodyStart, bodyEnd)
+  };
+}
